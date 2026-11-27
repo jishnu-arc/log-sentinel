@@ -2,71 +2,106 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Log Sentinel — Security Log Analyzer</title>
 <meta name="description" content="Free offline log analyzer: detect brute-force attempts, failed logins, odd hours and suspicious IPs in server and auth logs. Runs entirely in your browser.">
-<meta name="theme-color" content="#0a0f14">
+<meta name="theme-color" content="#070d0c">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
-:root{--bg:#eef3f2;--panel:#fff;--ink:#0c1a18;--mute:#56685f;--line:#cfdcd5;--accent:#0f766e;--accent2:#059669;--bad:#be123c;--warn:#b45309;--good:#15803d;--field:#f3f8f6}
-@media (prefers-color-scheme:dark){:root{--bg:#070d0c;--panel:#101b19;--ink:#e8f3ef;--mute:#8fa89d;--line:#203733;--accent:#2dd4bf;--accent2:#34d399;--bad:#fb7185;--warn:#fbbf24;--good:#4ade80;--field:#0b1512}}
+:root{--bg1:#eef4f2;--bg2:#dff0ec;--panel:rgba(255,255,255,.72);--line:rgba(16,50,45,.14);--ink:#0c1a18;--mute:#53685f;--accent:#0f766e;--accent2:#059669;--bad:#be123c;--warn:#b45309;--good:#15803d;--field:rgba(255,255,255,.55);--shadow:0 16px 40px rgba(15,60,50,.12);--glow:.3}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg1:#060b0a;--bg2:#0e201c;--panel:rgba(255,255,255,.05);--line:rgba(255,255,255,.12);--ink:#e8f3ef;--mute:#8fa89d;--accent:#2dd4bf;--accent2:#34d399;--bad:#fb7185;--warn:#fbbf24;--good:#4ade80;--field:rgba(255,255,255,.06);--shadow:0 16px 40px rgba(0,0,0,.45);--glow:.45}}
+:root[data-theme=dark]{--bg1:#060b0a;--bg2:#0e201c;--panel:rgba(255,255,255,.05);--line:rgba(255,255,255,.12);--ink:#e8f3ef;--mute:#8fa89d;--accent:#2dd4bf;--accent2:#34d399;--bad:#fb7185;--warn:#fbbf24;--good:#4ade80;--field:rgba(255,255,255,.06);--shadow:0 16px 40px rgba(0,0,0,.45);--glow:.45}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
-header{padding:24px 20px 8px;max-width:1080px;margin:0 auto}
-h1{font:700 26px/1.2 Georgia,serif;margin:0}
-header p{margin:4px 0 0;color:var(--mute)}
-main{max-width:1080px;margin:0 auto;padding:12px 20px 48px;display:grid;gap:16px}
-.box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
-.drop{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;cursor:pointer;transition:.15s}
-.drop.over{border-color:var(--accent);background:var(--field)}
+body{margin:0;min-height:100vh;color:var(--ink);font:15.5px/1.6 Inter,"Segoe UI",system-ui,-apple-system,sans-serif;background:radial-gradient(1000px 520px at 8% -10%,var(--bg2),transparent),radial-gradient(800px 500px at 100% 0,rgba(45,212,191,.12),transparent),var(--bg1);background-attachment:fixed;font-variant-numeric:tabular-nums}
+.scan{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:var(--glow);background:repeating-linear-gradient(0deg,rgba(45,212,191,.05) 0 1px,transparent 1px 3px)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+header.top{position:sticky;top:0;z-index:20;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);background:var(--panel);border-bottom:1px solid var(--line)}
+header.top .bar{display:flex;align-items:center;justify-content:space-between;height:66px;gap:14px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:18px;letter-spacing:-.3px}
+.brand .ic{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;box-shadow:0 6px 16px rgba(15,118,110,.35)}
+.brand small{display:block;font-size:12px;font-weight:600;color:var(--mute);letter-spacing:.3px}
+.ib{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.ib:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.drop:focus-visible{outline:3px solid var(--accent2);outline-offset:2px}
+main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:26px 20px 54px;display:grid;gap:18px}
+.hero p{color:var(--mute);max-width:620px;margin:6px 0 0}
+.glass{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:var(--shadow);backdrop-filter:blur(14px)}
+.drop{border:2px dashed var(--line);border-radius:16px;padding:28px 18px;text-align:center;cursor:pointer;transition:.2s;display:block}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--field)}
 .drop input{display:none}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
-textarea{width:100%;min-height:110px;background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px;font:13px/1.5 ui-monospace,Consolas,monospace;resize:vertical}
-button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 16px;font:600 14px inherit;font-family:inherit;cursor:pointer}
-button.ghost{background:var(--field);color:var(--ink);border:1px solid var(--line)}
-button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
-.stat b{display:block;font:700 28px Georgia,serif}.stat span{color:var(--mute);font-size:13px}
+.drop .di{width:42px;height:42px;margin:0 auto 10px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#fff}
+.drop small{color:var(--mute);display:block;margin-top:4px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+textarea{width:100%;min-height:120px;background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:12px;font:13px/1.6 ui-monospace,Consolas,monospace;resize:vertical}
+button{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#042f2b;border:0;border-radius:11px;padding:11px 20px;font:700 14px inherit;font-family:inherit;cursor:pointer;box-shadow:0 8px 20px rgba(15,118,110,.3);transition:transform .15s,box-shadow .2s}
+button:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(15,118,110,.45)}
+button.ghost{background:var(--field);color:var(--ink);border:1px solid var(--line);box-shadow:none}
+button.ghost:hover{transform:none;border-color:var(--accent)}
+select{background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:11px;padding:10px 12px;font:600 14px inherit}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.stat{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;overflow:hidden;box-shadow:var(--shadow)}
+.stat:before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(45,212,191,.1),transparent 60%)}
+.stat b{position:relative;display:block;font:800 30px/1.1 Georgia,serif;letter-spacing:-1px}
+.stat span{position:relative;color:var(--mute);font-size:13px}
 .sev-crit b{color:var(--bad)}.sev-warn b{color:var(--warn)}.sev-ok b{color:var(--good)}
-h2{font:700 18px/1.2 Georgia,serif;margin:0 0 10px}
-.findings{display:grid;gap:10px}
-.f{border-left:4px solid var(--line);background:var(--field);border-radius:0 10px 10px 0;padding:12px 14px}
-.f.crit{border-color:var(--bad)}.f.warn{border-color:var(--warn)}.f.info{border-color:var(--accent)}
-.f .ft{display:flex;justify-content:space-between;gap:10px;font-weight:700;flex-wrap:wrap}
-.f .fd{color:var(--mute);font-size:13.5px;margin-top:4px}
-.tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.4px}
-.crit .tag{background:rgba(190,18,60,.15);color:var(--bad)}
-.warn .tag{background:rgba(180,83,9,.15);color:var(--warn)}
-.info .tag{background:rgba(15,118,110,.15);color:var(--accent)}
-.tw{overflow-x:auto;margin-top:10px}
-table{border-collapse:collapse;width:100%;font-size:13px}
-th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
-th{color:var(--mute);font-weight:600}
-.empty{color:var(--mute);text-align:center;padding:30px 10px}
-.note{font-size:13px;color:var(--mute);margin-top:10px}
-.pill{display:inline-block;background:var(--field);border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:12.5px;margin:2px}
-select{background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
-@media(max-width:760px){.cards{grid-template-columns:repeat(2,1fr)}}
+h2{font:800 19px/1.2 Inter,system-ui,sans-serif;margin:0 0 14px;display:flex;align-items:center;gap:9px;letter-spacing:-.2px}
+h2 svg{width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.findings{display:grid;gap:11px}
+.f{position:relative;border-radius:14px;padding:14px 16px 14px 18px;background:var(--field);border:1px solid var(--line);overflow:hidden;animation:pop .35s ease backwards}
+.f:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
+.f.crit:before{background:var(--bad)}.f.warn:before{background:var(--warn)}.f.info:before{background:var(--accent)}
+.f .ft{display:flex;justify-content:space-between;gap:10px;font-weight:700;flex-wrap:wrap;align-items:center}
+.f .fd{color:var(--mute);font-size:13.5px;margin-top:5px;line-height:1.55}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.tag:before{content:"";width:6px;height:6px;border-radius:50%}
+.crit .tag{background:rgba(190,18,60,.14);color:var(--bad)}.crit .tag:before{background:var(--bad);box-shadow:0 0 0 0 rgba(190,18,60,.5);animation:ping 1.8s infinite}
+.warn .tag{background:rgba(180,83,9,.14);color:var(--warn)}.warn .tag:before{background:var(--warn)}
+.info .tag{background:rgba(15,118,110,.14);color:var(--accent)}.info .tag:before{background:var(--accent)}
+@keyframes ping{70%{box-shadow:0 0 0 7px rgba(190,18,60,0)}}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.tw{overflow-x:auto;margin-top:4px;border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mute);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+tbody tr:hover{background:var(--field)}
+.empty{color:var(--mute);text-align:center;padding:34px 10px}
+.empty svg{width:34px;height:34px;stroke:var(--good);fill:none;stroke-width:2;margin-bottom:8px}
+.note{font-size:13px;color:var(--mute);margin-top:12px;display:flex;align-items:center;gap:7px}
+.note svg{width:15px;height:15px;stroke:var(--mute);fill:none;stroke-width:2;flex:none}
+@media(max-width:760px){.cards{grid-template-columns:repeat(2,1fr)}header.top .bar{height:60px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<header><h1>Log Sentinel</h1><p>Paste or upload a log file to spot brute-force attempts, failed logins, odd-hour access and suspicious IPs. Runs entirely in your browser. Nothing is uploaded anywhere.</p></header>
+<div class="scan" aria-hidden="true"></div>
+<header class="top"><div class="wrap bar">
+ <div class="brand"><span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#042f2b" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z"/></svg></span><div>Log Sentinel<small>Blue-team log analysis</small></div></div>
+ <button class="ib" id="th" aria-label="Switch light and dark theme"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+</div></header>
 <main>
-<section class="box">
- <label class="drop" id="drop" for="file">Drag a log file here, or click to choose one<br><small style="color:var(--mute)">.log, .txt or .csv — auth logs, Apache/Nginx access logs, or any line-based log</small>
- <input type="file" id="file" accept=".log,.txt,.csv,text/plain"></label>
- <div class="row"><button class="ghost" id="sample">Load sample log</button><button class="ghost" id="clear">Clear</button>
+<div class="hero"><h1 style="font:800 30px/1.15 Georgia,serif;letter-spacing:-1px;margin:0">Find the signal in your logs</h1>
+<p>Paste or drop an auth/SSH or web server log. It's parsed and checked for brute-force attempts, credential stuffing, scanning and basic attack signatures — entirely on this page, nothing is uploaded.</p></div>
+
+<section class="glass">
+ <label class="drop" id="drop" for="file" tabindex="0"><span class="di"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg></span>
+  <strong>Drag a log file here, or click to choose one</strong><small>.log, .txt or .csv — auth logs, Apache/Nginx access logs, or any line-based log</small>
+  <input type="file" id="file" accept=".log,.txt,.csv,text/plain"></label>
+ <div class="row"><button class="ghost" id="sample">▶ Load sample log</button><button class="ghost" id="clear">Clear</button>
   <select id="fmt" aria-label="Log format"><option value="auto">Auto-detect format</option><option value="ssh">Linux auth / SSH log</option><option value="web">Apache / Nginx access log</option></select>
  </div>
  <textarea id="in" aria-label="Log text" placeholder="Paste log lines here, e.g.&#10;Jan 10 03:14:02 server sshd[1021]: Failed password for admin from 203.0.113.9 port 51514 ssh2"></textarea>
- <div class="row"><button id="go">Analyze</button><span class="note" id="meta"></span></div>
+ <div class="row"><button id="go">🔍 Analyze</button><span class="note" id="meta"></span></div>
 </section>
 
 <section id="out"></section>
 </main>
 <script>
+const $=id=>document.getElementById(id);
+$("th").onclick=()=>{const r=document.documentElement,d=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme:dark)").matches;r.dataset.theme=d?"light":"dark"};
+</script>
+<script>
+
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 
@@ -137,20 +172,20 @@ function render(res,kind,meta){
   <div class="stat sev-warn"><b>${sevN.warn}</b><span>Warnings</span></div>
   <div class="stat"><b>${res.stats.uniqueIps}</b><span>Unique IP addresses</span></div>
  </div>`;
- h+=`<div class="box" style="margin-top:14px"><h2>Findings</h2>`;
- if(!res.findings.length)h+=`<div class="empty">No suspicious patterns detected in the parsed entries. This does not guarantee the system is secure — it only reflects what's in this log sample.</div>`;
+ h+=`<div class="glass"><h2><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>Findings</h2>`;
+ if(!res.findings.length)h+=`<div class="empty"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg><br>No suspicious patterns detected in the parsed entries.<br>This does not guarantee the system is secure — it only reflects what's in this log sample.</div>`;
  else h+=`<div class="findings">`+res.findings.sort((a,b)=>sevRank(a.sev)-sevRank(b.sev)).map(f=>`<div class="f ${f.sev}"><div class="ft"><span>${esc(f.title)}</span><span class="tag">${f.sev==="crit"?"Critical":f.sev==="warn"?"Warning":"Info"}</span></div><div class="fd">${esc(f.detail)}</div></div>`).join("")+`</div>`;
- h+=`</div><div class="box" style="margin-top:14px"><h2>Top IP addresses</h2><div class="tw"><table><thead><tr>${res.table.head.map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${res.table.rows.length?res.table.rows.map(r=>`<tr>${r.map(x=>`<td>${esc(x)}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${res.table.head.length}">No data</td></tr>`}</tbody></table></div>`;
- h+=`<p class="note">${meta}</p></div>`;
+ h+=`</div><div class="glass"><h2><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg>Top IP addresses</h2><div class="tw"><table><thead><tr>${res.table.head.map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${res.table.rows.length?res.table.rows.map(r=>`<tr>${r.map(x=>`<td>${esc(x)}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${res.table.head.length}">No data</td></tr>`}</tbody></table></div>`;
+ h+=`<p class="note"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>${meta}</p></div>`;
  $("out").innerHTML=h}
 
 function run(){
  const text=$("in").value;const fmtSel=$("fmt").value;
- if(!text.trim()){$("out").innerHTML='<div class="box"><div class="empty">Paste a log, upload a file, or click "Load sample log" to try it out.</div></div>';return}
+ if(!text.trim()){$("out").innerHTML='<div class="glass"><div class="empty">Paste a log, upload a file, or click "Load sample log" to try it out.</div></div>';return}
  let fmt=fmtSel;
  if(fmt==="auto"){const sample=text.split(/\r?\n/).slice(0,20).join("\n");fmt=/sshd|Failed password|Accepted (password|publickey)/.test(sample)?"ssh":/"\w+\s+\S+\s+HTTP\/\d/.test(sample)?"web":"ssh"}
  const {rows,total,unmatched}=parseAll(text,fmt);
- if(!rows.length){$("out").innerHTML=`<div class="box"><div class="empty">Could not recognize any lines in this format. Try selecting a format above, or check that the log uses a standard SSH/auth or Apache/Nginx layout.</div></div>`;return}
+ if(!rows.length){$("out").innerHTML=`<div class="glass"><div class="empty">Could not recognize any lines in this format. Try selecting a format above, or check that the log uses a standard SSH/auth or Apache/Nginx layout.</div></div>`;return}
  const kind=rows[0].kind;const res=kind==="auth"?analyzeAuth(rows):analyzeWeb(rows);
  render(res,kind,`Parsed ${rows.length} of ${total} line(s) as ${kind==="auth"?"SSH / auth log":"web access log"} entries (${unmatched} line(s) not recognized). All analysis ran locally in your browser.`);
  $("meta").textContent=`Detected format: ${kind==="auth"?"Linux auth / SSH":"Apache / Nginx access"}`}
@@ -163,7 +198,7 @@ file.onchange=()=>{const f=file.files[0];if(!f)return;const r=new FileReader();r
 ["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")}));
 ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over")}));
 drop.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$("in").value=r.result;run()};r.readAsText(f)});
-$("out").innerHTML='<div class="box"><div class="empty">Paste a log, upload a file, or click "Load sample log" to try it out.</div></div>';
+$("out").innerHTML='<div class="glass"><div class="empty">Paste a log, upload a file, or click "Load sample log" to try it out.</div></div>';
 if("serviceWorker" in navigator&&location.protocol!=="file:")navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>

@@ -29,6 +29,7 @@ This is a learning and triage tool, not a replacement for a real SIEM. It only s
 ## Features
 
 - Works offline and installs as an app (PWA)
+- Modern glass-panel interface with a sticky header, live severity badges and a light/dark toggle
 - Parses standard SSH/auth log lines and Apache/Nginx combined log format
 - Auto-detects the log type, or you can pick it manually
 - Nothing leaves your browser: no server, no upload, no tracking
