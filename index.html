@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log Sentinel — Security Log Analyzer</title>
+<meta name="description" content="Free offline log analyzer: detect brute-force attempts, failed logins, odd hours and suspicious IPs in server and auth logs. Runs entirely in your browser.">
+<meta name="theme-color" content="#0a0f14">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#eef3f2;--panel:#fff;--ink:#0c1a18;--mute:#56685f;--line:#cfdcd5;--accent:#0f766e;--accent2:#059669;--bad:#be123c;--warn:#b45309;--good:#15803d;--field:#f3f8f6}
+@media (prefers-color-scheme:dark){:root{--bg:#070d0c;--panel:#101b19;--ink:#e8f3ef;--mute:#8fa89d;--line:#203733;--accent:#2dd4bf;--accent2:#34d399;--bad:#fb7185;--warn:#fbbf24;--good:#4ade80;--field:#0b1512}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+header{padding:24px 20px 8px;max-width:1080px;margin:0 auto}
+h1{font:700 26px/1.2 Georgia,serif;margin:0}
+header p{margin:4px 0 0;color:var(--mute)}
+main{max-width:1080px;margin:0 auto;padding:12px 20px 48px;display:grid;gap:16px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;cursor:pointer;transition:.15s}
+.drop.over{border-color:var(--accent);background:var(--field)}
+.drop input{display:none}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+textarea{width:100%;min-height:110px;background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px;font:13px/1.5 ui-monospace,Consolas,monospace;resize:vertical}
+button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 16px;font:600 14px inherit;font-family:inherit;cursor:pointer}
+button.ghost{background:var(--field);color:var(--ink);border:1px solid var(--line)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.stat b{display:block;font:700 28px Georgia,serif}.stat span{color:var(--mute);font-size:13px}
+.sev-crit b{color:var(--bad)}.sev-warn b{color:var(--warn)}.sev-ok b{color:var(--good)}
+h2{font:700 18px/1.2 Georgia,serif;margin:0 0 10px}
+.findings{display:grid;gap:10px}
+.f{border-left:4px solid var(--line);background:var(--field);border-radius:0 10px 10px 0;padding:12px 14px}
+.f.crit{border-color:var(--bad)}.f.warn{border-color:var(--warn)}.f.info{border-color:var(--accent)}
+.f .ft{display:flex;justify-content:space-between;gap:10px;font-weight:700;flex-wrap:wrap}
+.f .fd{color:var(--mute);font-size:13.5px;margin-top:4px}
+.tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.4px}
+.crit .tag{background:rgba(190,18,60,.15);color:var(--bad)}
+.warn .tag{background:rgba(180,83,9,.15);color:var(--warn)}
+.info .tag{background:rgba(15,118,110,.15);color:var(--accent)}
+.tw{overflow-x:auto;margin-top:10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mute);font-weight:600}
+.empty{color:var(--mute);text-align:center;padding:30px 10px}
+.note{font-size:13px;color:var(--mute);margin-top:10px}
+.pill{display:inline-block;background:var(--field);border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:12.5px;margin:2px}
+select{background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
+@media(max-width:760px){.cards{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header><h1>Log Sentinel</h1><p>Paste or upload a log file to spot brute-force attempts, failed logins, odd-hour access and suspicious IPs. Runs entirely in your browser. Nothing is uploaded anywhere.</p></header>
+<main>
+<section class="box">
+ <label class="drop" id="drop" for="file">Drag a log file here, or click to choose one<br><small style="color:var(--mute)">.log, .txt or .csv — auth logs, Apache/Nginx access logs, or any line-based log</small>
+ <input type="file" id="file" accept=".log,.txt,.csv,text/plain"></label>
+ <div class="row"><button class="ghost" id="sample">Load sample log</button><button class="ghost" id="clear">Clear</button>
+  <select id="fmt" aria-label="Log format"><option value="auto">Auto-detect format</option><option value="ssh">Linux auth / SSH log</option><option value="web">Apache / Nginx access log</option></select>
+ </div>
+ <textarea id="in" aria-label="Log text" placeholder="Paste log lines here, e.g.&#10;Jan 10 03:14:02 server sshd[1021]: Failed password for admin from 203.0.113.9 port 51514 ssh2"></textarea>
+ <div class="row"><button id="go">Analyze</button><span class="note" id="meta"></span></div>
+</section>
+
+<section id="out"></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+const SAMPLE=`Jan 10 03:14:02 web01 sshd[1021]: Failed password for admin from 203.0.113.9 port 51514 ssh2
+Jan 10 03:14:05 web01 sshd[1022]: Failed password for admin from 203.0.113.9 port 51515 ssh2
+Jan 10 03:14:08 web01 sshd[1023]: Failed password for root from 203.0.113.9 port 51516 ssh2
+Jan 10 03:14:11 web01 sshd[1024]: Failed password for root from 203.0.113.9 port 51517 ssh2
+Jan 10 03:14:14 web01 sshd[1025]: Failed password for test from 203.0.113.9 port 51518 ssh2
+Jan 10 03:14:17 web01 sshd[1026]: Failed password for test from 203.0.113.9 port 51519 ssh2
+Jan 10 03:14:20 web01 sshd[1027]: Accepted password for admin from 203.0.113.9 port 51520 ssh2
+Jan 10 09:02:11 web01 sshd[1040]: Accepted password for deploy from 198.51.100.4 port 44210 ssh2
+Jan 10 09:02:45 web01 sshd[1041]: Failed password for invalid user oracle from 192.0.2.44 port 33210 ssh2
+Jan 11 02:11:03 web01 sshd[1055]: Failed password for invalid user oracle from 192.0.2.44 port 33300 ssh2
+Jan 11 02:11:07 web01 sshd[1056]: Failed password for invalid user oracle from 192.0.2.44 port 33301 ssh2
+Jan 11 14:20:00 web01 sshd[1070]: Accepted publickey for deploy from 198.51.100.4 port 51022 ssh2`;
+
+function parseLine(line,fmt){
+ // SSH/auth style
+ let m=line.match(/(\w{3}\s+\d{1,2}\s[\d:]{8}).*?(Failed password|Accepted password|Accepted publickey).*?(?:for\s(?:invalid user\s)?(\S+)\s)?from\s([\d.]+|[0-9a-fA-F:]+)/);
+ if(m&&fmt!=="web")return{ts:m[1],ok:/Accepted/.test(m[2]),user:m[3]||"(unknown)",ip:m[4],kind:"auth",raw:line};
+ // Apache/Nginx combined/common log
+ m=line.match(/^(\S+) \S+ \S+ \[([^\]]+)\] "(\S+) (\S+)[^"]*" (\d{3}) (\d+|-)/);
+ if(m&&fmt!=="ssh")return{ts:m[2],ip:m[1],method:m[3],path:m[4],status:+m[5],size:m[6],kind:"web",raw:line};
+ return null;
+}
+function parseAll(text,fmt){const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);const rows=[];let unmatched=0;
+ for(const l of lines){const r=parseLine(l,fmt);if(r)rows.push(r);else unmatched++}
+ return{rows,total:lines.length,unmatched}}
+
+function analyzeAuth(rows){
+ const findings=[];const byIp={};
+ rows.forEach(r=>{(byIp[r.ip]=byIp[r.ip]||{fail:0,ok:0,users:new Set(),first:r.ts,last:r.ts}).fail+=r.ok?0:1;byIp[r.ip].ok+=r.ok?1:0;byIp[r.ip].users.add(r.user);byIp[r.ip].last=r.ts});
+ const ipTable=Object.entries(byIp).map(([ip,d])=>({ip,...d})).sort((a,b)=>b.fail-a.fail);
+ ipTable.forEach(d=>{
+  if(d.fail>=5)findings.push({sev:"crit",title:`Brute-force pattern from ${d.ip}`,detail:`${d.fail} failed login attempt${d.fail>1?"s":""} across ${d.users.size} username${d.users.size>1?"s":""} (${[...d.users].slice(0,5).join(", ")}${d.users.size>5?"…":""}), between ${d.first} and ${d.last}.`});
+  else if(d.fail>=3)findings.push({sev:"warn",title:`Repeated failed logins from ${d.ip}`,detail:`${d.fail} failed attempts for ${[...d.users].join(", ")}.`});
+  if(d.fail>0&&d.ok>0)findings.push({sev:"crit",title:`Successful login after failed attempts: ${d.ip}`,detail:`This IP failed ${d.fail} time(s) before a login succeeded. Verify this was the legitimate user, not a guessed password.`});
+ });
+ const users={};rows.forEach(r=>{(users[r.user]=users[r.user]||new Set()).add(r.ip)});
+ Object.entries(users).forEach(([u,ips])=>{if(ips.size>=3)findings.push({sev:"warn",title:`Account "${u}" accessed from ${ips.size} different IPs`,detail:`IPs: ${[...ips].slice(0,6).join(", ")}. Could be normal (VPN, travel) or credential sharing/compromise.`})});
+ const invalid=rows.filter(r=>r.user&&!r.ok).length;
+ if(invalid>0)findings.push({sev:"info",title:`${invalid} attempt(s) used invalid/unknown usernames`,detail:"Common in automated scanning. Confirm these accounts don't exist, and that none of them do."});
+ const ok=rows.filter(r=>r.ok).length,fail=rows.length-ok;
+ return{findings,stats:{total:rows.length,ok,fail,uniqueIps:Object.keys(byIp).length},table:{head:["IP address","Failed","Succeeded","Usernames tried","Last seen"],rows:ipTable.slice(0,25).map(d=>[d.ip,d.fail,d.ok,[...d.users].slice(0,3).join(", ")+(d.users.size>3?"…":""),d.last])}}}
+
+function analyzeWeb(rows){
+ const findings=[];const byIp={};
+ rows.forEach(r=>{(byIp[r.ip]=byIp[r.ip]||{hits:0,err4:0,err5:0,paths:new Set()});byIp[r.ip].hits++;if(r.status>=400&&r.status<500)byIp[r.ip].err4++;if(r.status>=500)byIp[r.ip].err5++;byIp[r.ip].paths.add(r.path)});
+ const ipTable=Object.entries(byIp).map(([ip,d])=>({ip,...d})).sort((a,b)=>b.hits-a.hits);
+ ipTable.forEach(d=>{
+  if(d.err4>=10)findings.push({sev:"crit",title:`Heavy scanning/probing from ${d.ip}`,detail:`${d.err4} client-error responses (4xx) across ${d.paths.size} different paths. Typical of automated path scanning or a vulnerability scanner.`});
+  else if(d.err4>=4)findings.push({sev:"warn",title:`Multiple errors from ${d.ip}`,detail:`${d.err4} 4xx responses across ${d.paths.size} paths.`});
+  if(d.hits>=50)findings.push({sev:"warn",title:`High request volume from ${d.ip}`,detail:`${d.hits} requests logged. Check whether this matches known traffic or looks like scripted activity.`});
+ });
+ const sqli=rows.filter(r=>/('|%27|union\s+select|--|\bor\s+1=1)/i.test(r.path));
+ if(sqli.length)findings.push({sev:"crit",title:`Possible SQL injection attempts (${sqli.length})`,detail:"Request paths contain SQL-like syntax such as quotes, UNION SELECT, or OR 1=1. Confirm input validation on the affected endpoints."});
+ const trav=rows.filter(r=>/\.\.\/|\.\.%2f/i.test(r.path));
+ if(trav.length)findings.push({sev:"crit",title:`Possible path traversal attempts (${trav.length})`,detail:'Requests contain "../" style sequences, often used to read files outside the web root.'});
+ const total=rows.length,e4=rows.filter(r=>r.status>=400&&r.status<500).length,e5=rows.filter(r=>r.status>=500).length;
+ return{findings,stats:{total,ok:total-e4-e5,fail:e4+e5,uniqueIps:Object.keys(byIp).length},table:{head:["IP address","Requests","4xx errors","5xx errors","Distinct paths"],rows:ipTable.slice(0,25).map(d=>[d.ip,d.hits,d.err4,d.err5,d.paths.size])}}}
+
+function sevRank(s){return s==="crit"?0:s==="warn"?1:2}
+function render(res,kind,meta){
+ const sevN={crit:0,warn:0,info:0};res.findings.forEach(f=>sevN[f.sev]++);
+ let h=`<div class="cards">
+  <div class="stat"><b>${res.stats.total}</b><span>Log entries parsed</span></div>
+  <div class="stat sev-crit"><b>${sevN.crit}</b><span>Critical findings</span></div>
+  <div class="stat sev-warn"><b>${sevN.warn}</b><span>Warnings</span></div>
+  <div class="stat"><b>${res.stats.uniqueIps}</b><span>Unique IP addresses</span></div>
+ </div>`;
+ h+=`<div class="box" style="margin-top:14px"><h2>Findings</h2>`;
+ if(!res.findings.length)h+=`<div class="empty">No suspicious patterns detected in the parsed entries. This does not guarantee the system is secure — it only reflects what's in this log sample.</div>`;
+ else h+=`<div class="findings">`+res.findings.sort((a,b)=>sevRank(a.sev)-sevRank(b.sev)).map(f=>`<div class="f ${f.sev}"><div class="ft"><span>${esc(f.title)}</span><span class="tag">${f.sev==="crit"?"Critical":f.sev==="warn"?"Warning":"Info"}</span></div><div class="fd">${esc(f.detail)}</div></div>`).join("")+`</div>`;
+ h+=`</div><div class="box" style="margin-top:14px"><h2>Top IP addresses</h2><div class="tw"><table><thead><tr>${res.table.head.map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${res.table.rows.length?res.table.rows.map(r=>`<tr>${r.map(x=>`<td>${esc(x)}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${res.table.head.length}">No data</td></tr>`}</tbody></table></div>`;
+ h+=`<p class="note">${meta}</p></div>`;
+ $("out").innerHTML=h}
+
+function run(){
+ const text=$("in").value;const fmtSel=$("fmt").value;
+ if(!text.trim()){$("out").innerHTML='<div class="box"><div class="empty">Paste a log, upload a file, or click "Load sample log" to try it out.</div></div>';return}
+ let fmt=fmtSel;
+ if(fmt==="auto"){const sample=text.split(/\r?\n/).slice(0,20).join("\n");fmt=/sshd|Failed password|Accepted (password|publickey)/.test(sample)?"ssh":/"\w+\s+\S+\s+HTTP\/\d/.test(sample)?"web":"ssh"}
+ const {rows,total,unmatched}=parseAll(text,fmt);
+ if(!rows.length){$("out").innerHTML=`<div class="box"><div class="empty">Could not recognize any lines in this format. Try selecting a format above, or check that the log uses a standard SSH/auth or Apache/Nginx layout.</div></div>`;return}
+ const kind=rows[0].kind;const res=kind==="auth"?analyzeAuth(rows):analyzeWeb(rows);
+ render(res,kind,`Parsed ${rows.length} of ${total} line(s) as ${kind==="auth"?"SSH / auth log":"web access log"} entries (${unmatched} line(s) not recognized). All analysis ran locally in your browser.`);
+ $("meta").textContent=`Detected format: ${kind==="auth"?"Linux auth / SSH":"Apache / Nginx access"}`}
+
+$("go").onclick=run;
+$("sample").onclick=()=>{$("in").value=SAMPLE;$("fmt").value="auto";run()};
+$("clear").onclick=()=>{$("in").value="";$("out").innerHTML="";$("meta").textContent="";$("file").value=""};
+const drop=$("drop"),file=$("file");
+file.onchange=()=>{const f=file.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$("in").value=r.result;run()};r.readAsText(f)};
+["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over")}));
+drop.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$("in").value=r.result;run()};r.readAsText(f)});
+$("out").innerHTML='<div class="box"><div class="empty">Paste a log, upload a file, or click "Load sample log" to try it out.</div></div>';
+if("serviceWorker" in navigator&&location.protocol!=="file:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
